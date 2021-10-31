@@ -1,0 +1,12 @@
+[package]
+name = "ch_cityhash102"
+version = "0.1.0"
+edition = "2021"
+description = "ClickHouse CityHash implementation"
+readme = "README.md"
+keywords = ["clickhouse", "cityhash"]
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
