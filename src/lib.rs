@@ -57,7 +57,6 @@ impl Into<u128> for U128 {
     }
 }
 
-
 const fn w64(v: u64) -> w64 {
     Wrapping(v)
 }
@@ -220,11 +219,12 @@ pub fn cityhash64(data: &[u8]) -> u64 {
         } else if data.len() <= 64 {
             return hash_len33to64(data).0;
         }
-        // For strings over 64 bytes we hash the end first, and then as we
-        // loop we keep 56 bytes of state: v, w, x, y, and z.
+
         let mut s = data.as_ptr();
         let mut len = data.len();
 
+        // For strings over 64 bytes we hash the end first, and then as we
+        // loop we keep 56 bytes of state: v, w, x, y, and z.
         let mut x = fetch64(s);
         let mut y = fetch64(s.add(len).sub(16)) ^ K1;
         let mut z = fetch64(s.add(len).sub(56)) ^ K0;
@@ -263,9 +263,142 @@ pub fn cityhash64(data: &[u8]) -> u64 {
     }
 }
 
+unsafe fn city_murmur(data: &[u8], seed: U128) -> U128 {
+    let mut s = data.as_ptr();
+    let len = data.len();
+
+    let mut a = w64(seed.lo);
+    let mut b = w64(seed.hi);
+    let mut c: w64;
+    let mut d: w64;
+    let mut l = (len as isize) - 16;
+
+    if l <= 0 {
+        // len <= 16
+        a = shift_mix(a * K1) * K1;
+        c = b * K1 + hash_len0to16(data);
+        d = shift_mix(a + (if len >= 8 { fetch64(s) } else { c }));
+    } else {
+        // len > 16
+        c = hash_len16(fetch64(s.add(len).sub(8)) + K1, a);
+        d = hash_len16(b + w64(len as u64), c + fetch64(s.add(len).sub(16)));
+        a += d;
+        while {
+            a ^= shift_mix(fetch64(s) * K1) * K1;
+            a *= K1;
+            b ^= a;
+            c ^= shift_mix(fetch64(s.add(8)) * K1) * K1;
+            c *= K1;
+            d ^= c;
+            s = s.add(16);
+            l -= 16;
+            l > 0
+        } { /* EMPTY */ }
+    }
+    a = hash_len16(a, c);
+    b = hash_len16(d, b);
+    U128::new((a ^ b).0, hash_len16(b, a).0)
+}
+
+fn cityhash128_with_seed(data: &[u8], seed: U128) -> U128 {
+    let mut s = data.as_ptr();
+    let mut len = data.len();
+
+    unsafe {
+        // TODO: it may be inlined to the cityhash128
+        if len < 128 {
+            return city_murmur(data, seed);
+        }
+
+        // We expect len >= 128 to be the common case.  Keep 56 bytes of state:
+        // v, w, x, y, and z.
+        let mut x = w64(seed.lo);
+        let mut y = w64(seed.hi);
+        let mut z = w64(len as u64) * K1;
+        let mut v = (w64(0), w64(0));
+        v.0 = rotate(y ^ K1, 49) * K1 + fetch64(s);
+        v.1 = rotate(v.0, 42) * K1 + fetch64(s.add(8));
+        let mut w = (
+            rotate(y + z, 35) * K1 + x,
+            rotate(x + fetch64(s.add(88)), 53) * K1,
+        );
+
+        while {
+            x = rotate(x + y + v.0 + fetch64(s.add(16)), 37) * K1;
+            y = rotate(y + v.1 + fetch64(s.add(48)), 42) * K1;
+            x ^= w.1;
+            y ^= v.0;
+            z = rotate(z ^ w.0, 33);
+            v = weak_hash_len32_with_seeds(s, v.1 * K1, x + w.0);
+            w = weak_hash_len32_with_seeds(s.add(32), z + w.1, y);
+            core::mem::swap(&mut z, &mut x);
+            s = s.add(64);
+            x = rotate(x + y + v.0 + fetch64(s.add(16)), 37) * K1;
+            y = rotate(y + v.1 + fetch64(s.add(48)), 42) * K1;
+            x ^= w.1;
+            y ^= v.0;
+            z = rotate(z ^ w.0, 33);
+            v = weak_hash_len32_with_seeds(s, v.1 * K1, x + w.0);
+            w = weak_hash_len32_with_seeds(s.add(32), z + w.1, y);
+            core::mem::swap(&mut z, &mut x);
+            s = s.add(64);
+            len -= 128;
+
+            len >= 128
+        } { /* EMPTY */ }
+
+        y += rotate(w.0, 37) * K0 + z;
+        x += rotate(v.0 + z, 49) * K0;
+
+        // If 0 < len < 128, hash up to 4 chunks of 32 bytes each from the end of s.
+        let mut tail_done: usize = 0;
+        while tail_done < len {
+            tail_done += 32;
+            y = rotate(y - x, 42) * K0 + v.1;
+            w.0 += fetch64(s.add(len).sub(tail_done).add(16));
+            x = rotate(x, 49) * K0 + w.0;
+            w.0 += v.0;
+            v = weak_hash_len32_with_seeds(s.add(len).sub(tail_done), v.0, v.1);
+        }
+        // At this point our 48 bytes of state should contain more than
+        // enough information for a strong 128-bit hash.  We use two
+        // different 48-byte-to-8-byte hashes to get a 16-byte final result.
+        x = hash_len16(x, v.0);
+        y = hash_len16(y, w.0);
+
+        U128::new(
+            (hash_len16(x + v.1, w.1) + y).0,
+            hash_len16(x + w.1, y + v.1).0,
+        )
+    }
+}
+
+pub fn cityhash128(data: &[u8]) -> U128 {
+    let s = data.as_ptr();
+    let len = data.len();
+    unsafe {
+        if len >= 16 {
+            cityhash128_with_seed(
+                &data[16..],
+                U128::new((fetch64(s) ^ K3).0, fetch64(s.add(8)).0),
+            )
+        } else if data.len() >= 8 {
+            cityhash128_with_seed(
+                b"",
+                U128::new(
+                    (fetch64(s) ^ (w64(len as u64) * K0)).0,
+                    (fetch64(s.add(len).sub(8)) ^ K1).0,
+                ),
+            )
+        } else {
+            cityhash128_with_seed(data, U128::new(K0.0, K1.0))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::{cityhash64, U128};
+    use crate::{cityhash128, cityhash64, U128};
 
     #[test]
     fn test_64_len0() {
@@ -348,5 +481,162 @@ mod tests {
     fn test_into_u128() {
         let v: u128 = U128::new(0x2345612345671234u64, 0x1121231234123451u64).into();
         assert_eq!(v, 0x11212312341234512345612345671234u128);
+    }
+
+    /*
+     * The test_128_* numbers are generated by a custom binary calling CityHash128.
+     */
+    #[test]
+    fn test_128_len0() {
+        assert_eq!(
+            cityhash128(b""),
+            U128::new(4463240938071824939, 4374473821787594281)
+        );
+    }
+
+    #[test]
+    fn test_128_len1() {
+        assert_eq!(
+            cityhash128(b"1"),
+            U128::new(6359294370932160835, 9352172043616825891)
+        );
+    }
+
+    #[test]
+    fn test_128_len2() {
+        assert_eq!(
+            cityhash128(b"12"),
+            U128::new(16369832005849840265, 11285803613326688650)
+        );
+    }
+
+    #[test]
+    fn test_128_len3() {
+        assert_eq!(
+            cityhash128(b"123"),
+            U128::new(11385344155619871181, 565130349297615695)
+        );
+    }
+
+    #[test]
+    fn test_128_len4() {
+        assert_eq!(
+            cityhash128(b"1234"),
+            U128::new(2764810728135862028, 5901424084875196719)
+        );
+    }
+
+    #[test]
+    fn test_128_len5() {
+        assert_eq!(
+            cityhash128(b"12345"),
+            U128::new(11980518989907363833, 93456746504981291)
+        );
+    }
+
+    #[test]
+    fn test_128_len6() {
+        assert_eq!(
+            cityhash128(b"123456"),
+            U128::new(2350911489181485812, 12095241732236332703)
+        );
+    }
+
+    #[test]
+    fn test_128_len7() {
+        assert_eq!(
+            cityhash128(b"1234567"),
+            U128::new(10270309315532912023, 9823143772454143291)
+        );
+    }
+
+    #[test]
+    fn test_128_len8() {
+        assert_eq!(
+            cityhash128(b"12345678"),
+            U128::new(2123262123519760883, 8251334461883709976)
+        );
+    }
+
+    #[test]
+    fn test_128_len9() {
+        assert_eq!(
+            cityhash128(b"123456789"),
+            U128::new(14140762465907274276, 13893707330375041594)
+        );
+    }
+
+    #[test]
+    fn test_128_len10() {
+        assert_eq!(
+            cityhash128(b"1234567890"),
+            U128::new(8211333661328737896, 17823093577549856754)
+        );
+    }
+
+    #[test]
+    fn test_128_len11() {
+        assert_eq!(
+            cityhash128(b"1234567890A"),
+            U128::new(1841684041954399514, 6623964278873157363)
+        );
+    }
+
+    #[test]
+    fn test_128_len12() {
+        assert_eq!(
+            cityhash128(b"1234567890Ab"),
+            U128::new(3349064628685767173, 12952593207096460945)
+        );
+    }
+
+    #[test]
+    fn test_128_len13() {
+        assert_eq!(
+            cityhash128(b"1234567890Abc"),
+            U128::new(6572961695122645386, 13774858861848724400)
+        );
+    }
+
+    #[test]
+    fn test_128_len14() {
+        assert_eq!(
+            cityhash128(b"1234567890AbcD"),
+            U128::new(18041930573402443112, 5778672772533284640)
+        );
+    }
+
+    #[test]
+    fn test_128_len15() {
+        assert_eq!(
+            cityhash128(b"1234567890AbcDE"),
+            U128::new(11266190325599732773, 348002394938205539)
+        );
+    }
+
+    #[test]
+    fn test_128_len16() {
+        assert_eq!(
+            cityhash128(b"1234567890AbcDEF"),
+            U128::new(15073733098592741404, 5913034415582713572)
+        );
+    }
+
+    #[test]
+    fn test_128_long() {
+        assert_eq!(
+            cityhash128(b"this is somewhat long string"),
+            U128::new(2957911805285034456, 6923665615086076251)
+        );
+    }
+
+    #[test]
+    fn test_128_longer() {
+        assert_eq!(
+            cityhash128(
+                b"DMqhuXQxgAmJ9EOkT1n2lpzu7YD6zKc6ESSDWfJfohaQDwu0ba61bfGMiuS5GXpr0bIVcCtLwRtIVGmK"
+            ),
+            U128::new(9681404383092874918, 15631953994107571989)
+        );
     }
 }
