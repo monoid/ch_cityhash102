@@ -27,6 +27,37 @@ use core::num::Wrapping;
 type w64 = Wrapping<u64>;
 type w32 = Wrapping<u32>;
 
+/** C++ CityHash-compatible uint128 type.  Please note that From<u128>
+ * and Into<u128> are defined for this type.
+ */
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct U128 {
+    pub lo: u64,
+    pub hi: u64,
+}
+
+impl U128 {
+    pub fn new(lo: u64, hi: u64) -> Self {
+        Self { lo, hi }
+    }
+}
+
+impl From<u128> for U128 {
+    fn from(source: u128) -> Self {
+        Self {
+            lo: source as u64,
+            hi: (source >> 64) as u64,
+        }
+    }
+}
+
+impl Into<u128> for U128 {
+    fn into(self) -> u128 {
+        (self.lo as u128) | ((self.hi as u128) << 64)
+    }
+}
+
+
 const fn w64(v: u64) -> w64 {
     Wrapping(v)
 }
@@ -234,7 +265,7 @@ pub fn cityhash64(data: &[u8]) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::cityhash64;
+    use crate::{cityhash64, U128};
 
     #[test]
     fn test_64_len0() {
@@ -304,5 +335,18 @@ mod tests {
             &b"DMqhuXQxgAmJ9EOkT1n2lpzu7YD6zKc6ESSDWfJfohaQDwu0ba61bfGMiuS5GXpr0bIVcCtLwRtIVGmK"[..];
         assert_eq!(data.len(), 80); // test validity
         assert_eq!(cityhash64(data), 12512298373611890505);
+    }
+
+    #[test]
+    fn test_from_u128() {
+        let v = U128::from(0x11212312341234512345612345671234u128);
+        assert_eq!(v.lo, 0x2345612345671234u64);
+        assert_eq!(v.hi, 0x1121231234123451u64);
+    }
+
+    #[test]
+    fn test_into_u128() {
+        let v: u128 = U128::new(0x2345612345671234u64, 0x1121231234123451u64).into();
+        assert_eq!(v, 0x11212312341234512345612345671234u128);
     }
 }
