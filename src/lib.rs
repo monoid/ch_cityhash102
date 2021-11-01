@@ -53,6 +53,7 @@ unsafe fn fetch32(s: *const u8) -> w32 {
 
 #[inline]
 fn rotate(v: w64, n: u32) -> w64 {
+    debug_assert!(n > 0);
     // Look, ma, I have real rotate!
     // rotate_right for Wrapping is yet unstable, so we unwrap and wrap it back.
     w64(v.0.rotate_right(n))
