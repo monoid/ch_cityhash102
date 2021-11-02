@@ -51,9 +51,9 @@ impl From<u128> for U128 {
     }
 }
 
-impl Into<u128> for U128 {
-    fn into(self) -> u128 {
-        (self.lo as u128) | ((self.hi as u128) << 64)
+impl From<U128> for u128 {
+    fn from(val: U128) -> Self {
+        (val.lo as u128) | ((val.hi as u128) << 64)
     }
 }
 
