@@ -37,8 +37,12 @@ pub struct U128 {
 }
 
 impl U128 {
-    pub fn new(lo: u64, hi: u64) -> Self {
+    pub const fn new(lo: u64, hi: u64) -> Self {
         Self { lo, hi }
+    }
+
+    const fn from_w64(lo: w64, hi: w64) -> Self {
+        Self { lo: lo.0, hi: hi.0 }
     }
 }
 
@@ -297,7 +301,7 @@ unsafe fn city_murmur(data: &[u8], seed: U128) -> U128 {
     }
     a = hash_len16(a, c);
     b = hash_len16(d, b);
-    U128::new((a ^ b).0, hash_len16(b, a).0)
+    U128::from_w64(a ^ b, hash_len16(b, a))
 }
 
 fn cityhash128_with_seed(data: &[u8], seed: U128) -> U128 {
@@ -366,10 +370,7 @@ fn cityhash128_with_seed(data: &[u8], seed: U128) -> U128 {
         x = hash_len16(x, v.0);
         y = hash_len16(y, w.0);
 
-        U128::new(
-            (hash_len16(x + v.1, w.1) + y).0,
-            hash_len16(x + w.1, y + v.1).0,
-        )
+        U128::from_w64(hash_len16(x + v.1, w.1) + y, hash_len16(x + w.1, y + v.1))
     }
 }
 
@@ -380,18 +381,18 @@ pub fn cityhash128(data: &[u8]) -> U128 {
         if len >= 16 {
             cityhash128_with_seed(
                 &data[16..],
-                U128::new((fetch64(s) ^ K3).0, fetch64(s.add(8)).0),
+                U128::from_w64(fetch64(s) ^ K3, fetch64(s.add(8))),
             )
         } else if data.len() >= 8 {
             cityhash128_with_seed(
                 b"",
-                U128::new(
-                    (fetch64(s) ^ (w64(len as u64) * K0)).0,
-                    (fetch64(s.add(len).sub(8)) ^ K1).0,
+                U128::from_w64(
+                    fetch64(s) ^ (w64(len as u64) * K0),
+                    fetch64(s.add(len).sub(8)) ^ K1,
                 ),
             )
         } else {
-            cityhash128_with_seed(data, U128::new(K0.0, K1.0))
+            cityhash128_with_seed(data, U128::from_w64(K0, K1))
         }
     }
 }
