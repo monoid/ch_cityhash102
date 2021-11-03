@@ -13,7 +13,8 @@ license = "MIT"
 
 [dev-dependencies]
 criterion = "0.3.5"
-
+fake = "2.4"
+rand = "0.8"
 
 [[bench]]
 name = "bench"
