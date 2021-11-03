@@ -407,6 +407,16 @@ mod tests {
     }
 
     #[test]
+    fn test_64_len1() {
+        assert_eq!(cityhash64(b"1"), 11413460447292444913);
+    }
+
+    #[test]
+    fn test_64_len2() {
+        assert_eq!(cityhash64(b"12"), 12074748272894662792);
+    }
+
+    #[test]
     fn test_64_len3() {
         assert_eq!(cityhash64(b"abc"), 4220206313085259313);
     }
@@ -422,6 +432,16 @@ mod tests {
     }
 
     #[test]
+    fn test_64_len6() {
+        assert_eq!(cityhash64(b"123456"), 9260297286307356373);
+    }
+
+    #[test]
+    fn test_64_len7() {
+        assert_eq!(cityhash64(b"1234567"), 11025202622668490255);
+    }
+
+    #[test]
     fn test_64_len8() {
         assert_eq!(cityhash64(b"12345678"), 7177601938557627951);
     }
@@ -429,6 +449,36 @@ mod tests {
     #[test]
     fn test_64_len9() {
         assert_eq!(cityhash64(b"123456789"), 12390271160407166709);
+    }
+
+    #[test]
+    fn test_64_len10() {
+        assert_eq!(cityhash64(b"1234567890"), 11159486737701695049);
+    }
+
+    #[test]
+    fn test_64_len11() {
+        assert_eq!(cityhash64(b"1234567890A"), 12461606063103015484);
+    }
+
+    #[test]
+    fn test_64_len12() {
+        assert_eq!(cityhash64(b"1234567890Ab"), 3962957222420222636);
+    }
+
+    #[test]
+    fn test_64_len13() {
+        assert_eq!(cityhash64(b"1234567890Abc"), 10943934074830884361);
+    }
+
+    #[test]
+    fn test_64_len14() {
+        assert_eq!(cityhash64(b"1234567890AbcD"), 14566583638543629997);
+    }
+
+    #[test]
+    fn test_64_len15() {
+        assert_eq!(cityhash64(b"1234567890AbcDE"), 1470766631700230904);
     }
 
     #[test]
