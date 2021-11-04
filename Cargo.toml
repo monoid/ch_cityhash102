@@ -9,7 +9,14 @@ license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+bench_with_clickhouse_driver = [ "clickhouse-driver-cth", "clickhouse-driver-cthrs" ]
+
 [dependencies]
+# These are actually dev-dependencies, but Cargo.toml does not allow
+# optional dev deps.
+clickhouse-driver-cth = { path = "../clickhouse_driver/cityhash", optional = true }
+clickhouse-driver-cthrs = { path = "../clickhouse_driver/cityhash-rs", optional = true }
 
 [dev-dependencies]
 criterion = "0.3.5"

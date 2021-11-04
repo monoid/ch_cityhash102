@@ -20,6 +20,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
  */
+
+/*!
+# Features
+
+This crate has only single feature used exclusively for benchmarking.
+
+* **bench_with_clickhouse_driver** -
+  Benchmark against https://github.com/ddulesov/clickhouse_driver/ ,
+  both native and C++ implementations.
+*/
 #![no_std]
 
 use core::num::Wrapping;
