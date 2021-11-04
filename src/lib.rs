@@ -26,9 +26,10 @@ THE SOFTWARE.
 
 This crate has only single feature used exclusively for benchmarking.
 
-* **bench_with_clickhouse_driver** -
-  Benchmark against https://github.com/ddulesov/clickhouse_driver/ ,
-  both native and C++ implementations.
+* **test_with_clickhouse_driver** -
+  Test and benchmark against
+  https://github.com/ddulesov/clickhouse_driver/ , both native and
+  C++ implementations.
 */
 #![no_std]
 
