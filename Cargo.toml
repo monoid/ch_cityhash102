@@ -21,6 +21,8 @@ clickhouse-driver-cthrs = { path = "../clickhouse_driver/cityhash-rs", optional 
 [dev-dependencies]
 criterion = "0.3.5"
 fake = "2.4"
+quickcheck = "1"
+quickcheck_macros = "1"
 rand = "0.8"
 
 [[bench]]
