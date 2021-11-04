@@ -1,8 +1,8 @@
 use ch_cityhash102::{cityhash128, cityhash64};
 
-#[cfg(feature="test_with_clickhouse_driver")]
+#[cfg(feature = "test_with_clickhouse_driver")]
 use clickhouse_driver_cth;
-#[cfg(feature="test_with_clickhouse_driver")]
+#[cfg(feature = "test_with_clickhouse_driver")]
 use clickhouse_driver_cthrs;
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
@@ -38,7 +38,7 @@ fn bench_compare(c: &mut Criterion) {
         },
     );
 
-    #[cfg(feature="test_with_clickhouse_driver")]
+    #[cfg(feature = "test_with_clickhouse_driver")]
     group.bench_with_input(
         BenchmarkId::new("cityhash64", "cth-short"),
         &data[..4],
@@ -59,7 +59,7 @@ fn bench_compare(c: &mut Criterion) {
         })
     });
 
-    #[cfg(feature="test_with_clickhouse_driver")]
+    #[cfg(feature = "test_with_clickhouse_driver")]
     group.bench_with_input(BenchmarkId::new("cityhash64", "cth-long"), data, |b, i| {
         b.iter(|| {
             i.iter().cloned().for_each(|v| {
@@ -80,7 +80,7 @@ fn bench_compare(c: &mut Criterion) {
         },
     );
 
-    #[cfg(feature="test_with_clickhouse_driver")]
+    #[cfg(feature = "test_with_clickhouse_driver")]
     group.bench_with_input(
         BenchmarkId::new("cityhash128", "cth-short"),
         &data[..4],
@@ -93,7 +93,7 @@ fn bench_compare(c: &mut Criterion) {
         },
     );
 
-    #[cfg(feature="test_with_clickhouse_driver")]
+    #[cfg(feature = "test_with_clickhouse_driver")]
     group.bench_with_input(
         BenchmarkId::new("cityhash128", "cthrs-short"),
         &data[..4],
@@ -114,7 +114,7 @@ fn bench_compare(c: &mut Criterion) {
         })
     });
 
-    #[cfg(feature="test_with_clickhouse_driver")]
+    #[cfg(feature = "test_with_clickhouse_driver")]
     group.bench_with_input(BenchmarkId::new("cityhash128", "cth-long"), data, |b, i| {
         b.iter(|| {
             i.iter().cloned().for_each(|v| {
@@ -123,12 +123,16 @@ fn bench_compare(c: &mut Criterion) {
         })
     });
 
-    #[cfg(feature="test_with_clickhouse_driver")]
-    group.bench_with_input(BenchmarkId::new("cityhash128", "cthrs-long"), data, |b, i| {
-        b.iter(|| {
-            i.iter().cloned().for_each(|v| {
-                black_box(clickhouse_driver_cthrs::city_hash_128(v));
+    #[cfg(feature = "test_with_clickhouse_driver")]
+    group.bench_with_input(
+        BenchmarkId::new("cityhash128", "cthrs-long"),
+        data,
+        |b, i| {
+            b.iter(|| {
+                i.iter().cloned().for_each(|v| {
+                    black_box(clickhouse_driver_cthrs::city_hash_128(v));
+                })
             })
-        })
-    });
+        },
+    );
 }
