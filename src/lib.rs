@@ -564,6 +564,12 @@ mod tests {
     }
 
     #[test]
+    fn test_64_binary() {
+        let data = b"\xe4x\x98\xa4*\xd7\xdc\x02p.\xdeI$\x9fp\xd4\xe3\xd7\xe7L\x86<5h75\xdf0B\x16\xe0\x86\xbeP\xb1rL\x8b\x07\x14!\x9e\xf5\xe0\x9cN\xa5\xfdJ]\xd8J\xc1\xc2.\xe6\xae\x14\xad^sW\x15&";
+        assert_eq!(cityhash64(data.as_ref()), 5932484233276644677);
+    }
+
+    #[test]
     fn test_from_u128() {
         let v = U128::from(0x11212312341234512345612345671234u128);
         assert_eq!(v.first, 0x2345612345671234u64);
@@ -730,6 +736,15 @@ mod tests {
                 b"DMqhuXQxgAmJ9EOkT1n2lpzu7YD6zKc6ESSDWfJfohaQDwu0ba61bfGMiuS5GXpr0bIVcCtLwRtIVGmK"
             ),
             U128::new(9681404383092874918, 15631953994107571989)
+        );
+    }
+
+    #[test]
+    fn test_128_binary() {
+        let data = b"\xe4x\x98\xa4*\xd7\xdc\x02p.\xdeI$\x9fp\xd4\xe3\xd7\xe7L\x86<5h75\xdf0B\x16\xe0\x86\xbeP\xb1rL\x8b\x07\x14!\x9e\xf5\xe0\x9cN\xa5\xfdJ]\xd8J\xc1\xc2.\xe6\xae\x14\xad^sW\x15&";
+        assert_eq!(
+            cityhash128(data.as_ref()),
+            U128::new(5907140908903622203, 10088853506155899265)
         );
     }
 }
