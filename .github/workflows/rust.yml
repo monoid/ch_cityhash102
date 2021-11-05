@@ -13,6 +13,6 @@ jobs:
     - name: Build
       run: cargo build --verbose
     - name: Run tests
-      run: cargo test --verbose --features test_with_clickhouse_driver
+      run: cargo test --features test_with_clickhouse_driver
     - name: Run bench
-      run: cargo bench --verbose --features test_with_clickhouse_driver
+      run: cargo bench --features test_with_clickhouse_driver
