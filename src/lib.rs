@@ -32,11 +32,13 @@ This crate has only single feature used exclusively for benchmarking.
   C++ implementations.
 */
 #![no_std]
-
+#![allow(clippy::many_single_char_names)]
+// This is a false positive: https://github.com/rust-lang/rust-clippy/issues/7580 :
+#![allow(clippy::blocks_in_if_conditions)]
 use core::num::Wrapping;
 
-type w64 = Wrapping<u64>;
-type w32 = Wrapping<u32>;
+type W64 = Wrapping<u64>;
+type W32 = Wrapping<u32>;
 
 /** C++ CityHash-compatible uint128 type.  Please note that From<u128>
  * and Into<u128> are defined for this type.
@@ -52,7 +54,7 @@ impl U128 {
         Self { lo, hi }
     }
 
-    const fn from_w64(lo: w64, hi: w64) -> Self {
+    const fn from_w64(lo: W64, hi: W64) -> Self {
         Self { lo: lo.0, hi: hi.0 }
     }
 }
@@ -72,47 +74,47 @@ impl From<U128> for u128 {
     }
 }
 
-const fn w64(v: u64) -> w64 {
+const fn w64(v: u64) -> W64 {
     Wrapping(v)
 }
 
-const fn w32(v: u32) -> w32 {
+const fn w32(v: u32) -> W32 {
     Wrapping(v)
 }
 
 // Some primes between 2^63 and 2^64 for various uses.
-const K0: w64 = w64(0xc3a5c85c97cb3127u64);
-const K1: w64 = w64(0xb492b66fbe98f273u64);
-const K2: w64 = w64(0x9ae16a3b2f90404fu64);
-const K3: w64 = w64(0xc949d7c7509e6557u64);
+const K0: W64 = w64(0xc3a5c85c97cb3127u64);
+const K1: W64 = w64(0xb492b66fbe98f273u64);
+const K2: W64 = w64(0x9ae16a3b2f90404fu64);
+const K3: W64 = w64(0xc949d7c7509e6557u64);
 
 #[inline]
-unsafe fn fetch64(s: *const u8) -> w64 {
+unsafe fn fetch64(s: *const u8) -> W64 {
     w64((s as *const u64).read_unaligned().to_le())
 }
 
 #[inline]
-unsafe fn fetch32(s: *const u8) -> w32 {
+unsafe fn fetch32(s: *const u8) -> W32 {
     w32((s as *const u32).read_unaligned().to_le())
 }
 
 #[inline]
-fn rotate(v: w64, n: u32) -> w64 {
+fn rotate(v: W64, n: u32) -> W64 {
     debug_assert!(n > 0);
     // Look, ma, I have real rotate!
     // rotate_right for Wrapping is yet unstable, so we unwrap and wrap it back.
     w64(v.0.rotate_right(n))
 }
 
-fn hash_len16(u: w64, v: w64) -> w64 {
+fn hash_len16(u: W64, v: W64) -> W64 {
     hash128_to_64(u, v)
 }
 
 // Hash 128 input bits down to 64 bits of output.
 // This is intended to be a reasonably good hash function.
 #[inline]
-fn hash128_to_64(l: w64, h: w64) -> w64 {
-    const K_MUL: w64 = w64(0x9ddfea08eb382d69u64);
+fn hash128_to_64(l: W64, h: W64) -> W64 {
+    const K_MUL: W64 = w64(0x9ddfea08eb382d69u64);
     let mut a = (h ^ l) * K_MUL;
     a ^= a >> 47;
     let mut b = (h ^ a) * K_MUL;
@@ -120,7 +122,7 @@ fn hash128_to_64(l: w64, h: w64) -> w64 {
     b * K_MUL
 }
 
-unsafe fn hash_len0to16(data: &[u8]) -> w64 {
+unsafe fn hash_len0to16(data: &[u8]) -> W64 {
     let len = data.len();
     let s = data.as_ptr();
 
@@ -148,7 +150,7 @@ unsafe fn hash_len0to16(data: &[u8]) -> w64 {
     }
 }
 
-unsafe fn hash_len17to32(data: &[u8]) -> w64 {
+unsafe fn hash_len17to32(data: &[u8]) -> W64 {
     let s = data.as_ptr();
     let len = data.len();
 
@@ -162,7 +164,7 @@ unsafe fn hash_len17to32(data: &[u8]) -> w64 {
     )
 }
 
-unsafe fn hash_len33to64(data: &[u8]) -> w64 {
+unsafe fn hash_len33to64(data: &[u8]) -> W64 {
     let s = data.as_ptr();
     let len = data.len();
 
@@ -189,7 +191,7 @@ unsafe fn hash_len33to64(data: &[u8]) -> w64 {
     shift_mix(vs + r * K0) * K2
 }
 
-unsafe fn weak_hash_len32_with_seeds(s: *const u8, a: w64, b: w64) -> (w64, w64) {
+unsafe fn weak_hash_len32_with_seeds(s: *const u8, a: W64, b: W64) -> (W64, W64) {
     weak_hash_len32_with_seeds_(
         fetch64(s),
         fetch64(s.add(8)),
@@ -201,13 +203,13 @@ unsafe fn weak_hash_len32_with_seeds(s: *const u8, a: w64, b: w64) -> (w64, w64)
 }
 
 unsafe fn weak_hash_len32_with_seeds_(
-    w: w64,
-    x: w64,
-    y: w64,
-    z: w64,
-    mut a: w64,
-    mut b: w64,
-) -> (w64, w64) {
+    w: W64,
+    x: W64,
+    y: W64,
+    z: W64,
+    mut a: W64,
+    mut b: W64,
+) -> (W64, W64) {
     a += w;
     b = rotate(b + a + z, 21);
     let c = a;
@@ -216,7 +218,7 @@ unsafe fn weak_hash_len32_with_seeds_(
     (a + z, b + c)
 }
 
-fn shift_mix(val: w64) -> w64 {
+fn shift_mix(val: W64) -> W64 {
     val ^ (val >> 47)
 }
 
@@ -244,8 +246,8 @@ pub fn cityhash64(data: &[u8]) -> u64 {
         let mut y = fetch64(s.add(len).sub(16)) ^ K1;
         let mut z = fetch64(s.add(len).sub(56)) ^ K0;
 
-        let mut v: (w64, w64) = weak_hash_len32_with_seeds(s.add(len).sub(64), w64(len as u64), y);
-        let mut w: (w64, w64) =
+        let mut v: (W64, W64) = weak_hash_len32_with_seeds(s.add(len).sub(64), w64(len as u64), y);
+        let mut w: (W64, W64) =
             weak_hash_len32_with_seeds(s.add(len).sub(32), K1 * w64(len as u64), K0);
 
         z += shift_mix(v.1) * K1;
@@ -284,8 +286,8 @@ unsafe fn city_murmur(data: &[u8], seed: U128) -> U128 {
 
     let mut a = w64(seed.lo);
     let mut b = w64(seed.hi);
-    let mut c: w64;
-    let mut d: w64;
+    let mut c: W64;
+    let mut d: W64;
     let mut l = (len as isize) - 16;
 
     if l <= 0 {
