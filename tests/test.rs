@@ -62,5 +62,5 @@ fn qc_64_against_cxx(data: Vec<u8>) -> bool {
 fn qc_128_against_cxx(data: Vec<u8>) -> bool {
     let our = cityhash128(data.as_ref());
     let theirs = clickhouse_driver_cth::city_hash_128(data.as_ref());
-    (our.lo, our.hi) == (theirs.0, theirs.1)
+    (our.first, our.second) == (theirs.0, theirs.1)
 }
