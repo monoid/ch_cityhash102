@@ -107,11 +107,19 @@ const K1: W64 = w64(0xb492b66fbe98f273u64);
 const K2: W64 = w64(0x9ae16a3b2f90404fu64);
 const K3: W64 = w64(0xc949d7c7509e6557u64);
 
+/**
+# Safety
+`s` has to point to at least 8 bytes of available data.
+*/
 #[inline]
 unsafe fn fetch64(s: *const u8) -> W64 {
     w64((s as *const u64).read_unaligned().to_le())
 }
 
+/**
+# Safety
+`s` has to point to at least 4 bytes of available data.
+*/
 #[inline]
 unsafe fn fetch32(s: *const u8) -> W32 {
     w32((s as *const u32).read_unaligned().to_le())
@@ -141,22 +149,29 @@ fn hash128_to_64(l: W64, h: W64) -> W64 {
     b * K_MUL
 }
 
-unsafe fn hash_len0to16(data: &[u8]) -> W64 {
+fn hash_len0to16(data: &[u8]) -> W64 {
     let len = data.len();
     let s = data.as_ptr();
 
     if len > 8 {
-        let a = fetch64(s);
-        let b = fetch64(s.add(len).sub(8));
-        b ^ hash_len16(a, rotate(b + w64(len as u64), len as u32))
+        // It is ok as len > 8.
+        unsafe {
+            let a = fetch64(s);
+            let b = fetch64(s.add(len).sub(8));
+            b ^ hash_len16(a, rotate(b + w64(len as u64), len as u32))
+        }
     } else if len >= 4 {
-        let a = fetch32(s).0 as u64;
+        // It is ok as len > 4.
+        unsafe {
+            let a = fetch32(s).0 as u64;
 
-        hash_len16(
-            w64((len as u64) + (a << 3)),
-            w64(fetch32(s.add(len).sub(4)).0.into()),
-        )
+            hash_len16(
+                w64((len as u64) + (a << 3)),
+                w64(fetch32(s.add(len).sub(4)).0.into()),
+            )
+        }
     } else if len > 0 {
+        // TODO make sure checks are eliminated by the compiler.
         let a: u8 = data[0];
         let b: u8 = data[len >> 1];
         let c: u8 = data[len - 1];
@@ -169,9 +184,13 @@ unsafe fn hash_len0to16(data: &[u8]) -> W64 {
     }
 }
 
+/*
+This function is unsafe because it will read incorrect memory when data.len() < 17.
+*/
 unsafe fn hash_len17to32(data: &[u8]) -> W64 {
     let s = data.as_ptr();
     let len = data.len();
+    debug_assert!(len > 16);
 
     let a = fetch64(s) * K1;
     let b = fetch64(s.add(8));
@@ -183,9 +202,13 @@ unsafe fn hash_len17to32(data: &[u8]) -> W64 {
     )
 }
 
+/*
+This function is unsafe because it will read incorrect memory when data.len() < 33.
+*/
 unsafe fn hash_len33to64(data: &[u8]) -> W64 {
     let s = data.as_ptr();
     let len = data.len();
+    debug_assert!(len > 32);
 
     let mut z = fetch64(s.add(24));
     let mut a = fetch64(s) + K0 * (w64(len as u64) + fetch64(s.add(len).sub(16)));
@@ -210,6 +233,7 @@ unsafe fn hash_len33to64(data: &[u8]) -> W64 {
     shift_mix(vs + r * K0) * K2
 }
 
+/* This function is unsafe because it reads 32 bytes starting from s. */
 unsafe fn weak_hash_len32_with_seeds(s: *const u8, a: W64, b: W64) -> (W64, W64) {
     weak_hash_len32_with_seeds_(
         fetch64(s),
@@ -221,7 +245,7 @@ unsafe fn weak_hash_len32_with_seeds(s: *const u8, a: W64, b: W64) -> (W64, W64)
     )
 }
 
-unsafe fn weak_hash_len32_with_seeds_(
+fn weak_hash_len32_with_seeds_(
     w: W64,
     x: W64,
     y: W64,
@@ -300,7 +324,7 @@ pub fn cityhash64(data: &[u8]) -> u64 {
     }
 }
 
-unsafe fn city_murmur(data: &[u8], seed: U128) -> U128 {
+fn city_murmur(data: &[u8], seed: U128) -> U128 {
     let mut s = data.as_ptr();
     let len = data.len();
 
@@ -314,23 +338,27 @@ unsafe fn city_murmur(data: &[u8], seed: U128) -> U128 {
         // len <= 16
         a = shift_mix(a * K1) * K1;
         c = b * K1 + hash_len0to16(data);
-        d = shift_mix(a + (if len >= 8 { fetch64(s) } else { c }));
+        // It is safe as read of 8 bytes is guarded by `len >= 8` condition.
+        d = unsafe { shift_mix(a + (if len >= 8 { fetch64(s) } else { c })) };
     } else {
         // len > 16
-        c = hash_len16(fetch64(s.add(len).sub(8)) + K1, a);
-        d = hash_len16(b + w64(len as u64), c + fetch64(s.add(len).sub(16)));
-        a += d;
-        while {
-            a ^= shift_mix(fetch64(s) * K1) * K1;
-            a *= K1;
-            b ^= a;
-            c ^= shift_mix(fetch64(s.add(8)) * K1) * K1;
-            c *= K1;
-            d ^= c;
-            s = s.add(16);
-            l -= 16;
-            l > 0
-        } { /* EMPTY */ }
+        // It is safe because len > 16 and that's enough
+        unsafe {
+            c = hash_len16(fetch64(s.add(len).sub(8)) + K1, a);
+            d = hash_len16(b + w64(len as u64), c + fetch64(s.add(len).sub(16)));
+            a += d;
+            while {
+                a ^= shift_mix(fetch64(s) * K1) * K1;
+                a *= K1;
+                b ^= a;
+                c ^= shift_mix(fetch64(s.add(8)) * K1) * K1;
+                c *= K1;
+                d ^= c;
+                s = s.add(16);
+                l -= 16;
+                l > 0
+            } { /* EMPTY */ }
+        }
     }
     a = hash_len16(a, c);
     b = hash_len16(d, b);
