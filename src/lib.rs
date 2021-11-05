@@ -48,32 +48,48 @@ for this type for your convenience.
 */
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct U128 {
-    pub lo: u64,
-    pub hi: u64,
+    pub first: u64,
+    pub second: u64,
 }
 
 impl U128 {
-    pub const fn new(lo: u64, hi: u64) -> Self {
-        Self { lo, hi }
+    #[inline]
+    pub const fn new(first: u64, second: u64) -> Self {
+        Self { first, second }
     }
 
-    const fn from_w64(lo: W64, hi: W64) -> Self {
-        Self { lo: lo.0, hi: hi.0 }
+    /** Lower half of the `U128`. */
+    #[inline]
+    pub const fn lo(&self) -> u64 {
+        self.first
+    }
+
+    /** Higher half of the `U128`. */
+    #[inline]
+    pub const fn hi(&self) -> u64 {
+        self.second
+    }
+
+    const fn from_w64(first: W64, second: W64) -> Self {
+        Self {
+            first: first.0,
+            second: second.0,
+        }
     }
 }
 
 impl From<u128> for U128 {
     fn from(source: u128) -> Self {
         Self {
-            lo: source as u64,
-            hi: (source >> 64) as u64,
+            first: source as u64,
+            second: (source >> 64) as u64,
         }
     }
 }
 
 impl From<U128> for u128 {
     fn from(val: U128) -> Self {
-        (val.lo as u128) | ((val.hi as u128) << 64)
+        (val.first as u128) | ((val.second as u128) << 64)
     }
 }
 
@@ -288,8 +304,8 @@ unsafe fn city_murmur(data: &[u8], seed: U128) -> U128 {
     let mut s = data.as_ptr();
     let len = data.len();
 
-    let mut a = w64(seed.lo);
-    let mut b = w64(seed.hi);
+    let mut a = w64(seed.first);
+    let mut b = w64(seed.second);
     let mut c: W64;
     let mut d: W64;
     let mut l = (len as isize) - 16;
@@ -333,8 +349,8 @@ fn cityhash128_with_seed(data: &[u8], seed: U128) -> U128 {
 
         // We expect len >= 128 to be the common case.  Keep 56 bytes of state:
         // v, w, x, y, and z.
-        let mut x = w64(seed.lo);
-        let mut y = w64(seed.hi);
+        let mut x = w64(seed.first);
+        let mut y = w64(seed.second);
         let mut z = w64(len as u64) * K1;
         let mut v = (w64(0), w64(0));
         v.0 = rotate(y ^ K1, 49) * K1 + fetch64(s);
@@ -550,8 +566,8 @@ mod tests {
     #[test]
     fn test_from_u128() {
         let v = U128::from(0x11212312341234512345612345671234u128);
-        assert_eq!(v.lo, 0x2345612345671234u64);
-        assert_eq!(v.hi, 0x1121231234123451u64);
+        assert_eq!(v.first, 0x2345612345671234u64);
+        assert_eq!(v.second, 0x1121231234123451u64);
     }
 
     #[test]
