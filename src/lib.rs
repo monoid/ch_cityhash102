@@ -24,11 +24,11 @@ THE SOFTWARE.
 /*!
 # Features
 
-This crate has only single feature used exclusively for benchmarking.
+This crate has only single feature used exclusively for testing/benchmarking.
 
 * **test_with_clickhouse_driver** -
   Test and benchmark against
-  https://github.com/ddulesov/clickhouse_driver/ , both native and
+  <https://github.com/ddulesov/clickhouse_driver/>, both native and
   C++ implementations.
 */
 #![no_std]
@@ -40,9 +40,12 @@ use core::num::Wrapping;
 type W64 = Wrapping<u64>;
 type W32 = Wrapping<u32>;
 
-/** C++ CityHash-compatible uint128 type.  Please note that From<u128>
- * and Into<u128> are defined for this type.
- */
+/** C++ CityHash-compatible `uint128` type.
+
+While Rust has native `u128` type, we've decided to use compatible type
+of two `u64` fields.  The `From<u128>` and `Into<u128>` are implemented
+for this type for your convenience.
+*/
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct U128 {
     pub lo: u64,
@@ -223,7 +226,8 @@ fn shift_mix(val: W64) -> W64 {
 }
 
 /**
-ClickHouse's version of the CityHash64 hash.
+ClickHouse's version of the CityHash64 hash.  It is used in the
+query language to process user data.
 */
 pub fn cityhash64(data: &[u8]) -> u64 {
     unsafe {
@@ -387,6 +391,15 @@ fn cityhash128_with_seed(data: &[u8], seed: U128) -> U128 {
     }
 }
 
+/**
+ClickHouse's version of the CityHash128 hash.  It is used in the
+ClickHouse protocol.
+
+## Returned value
+This function returns the [`U128`] struct that follows the
+original C++ version, even though Rust has native `u128` type.
+`From<u128>` and `Into<u128>` are implemented for this type.
+*/
 pub fn cityhash128(data: &[u8]) -> U128 {
     let s = data.as_ptr();
     let len = data.len();
