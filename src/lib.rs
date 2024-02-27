@@ -33,8 +33,6 @@ This crate has only single feature used exclusively for testing/benchmarking.
 */
 #![no_std]
 #![allow(clippy::many_single_char_names)]
-// This is a false positive: https://github.com/rust-lang/rust-clippy/issues/7580 :
-#![allow(clippy::blocks_in_if_conditions)]
 use core::num::Wrapping;
 
 type W64 = Wrapping<u64>;
