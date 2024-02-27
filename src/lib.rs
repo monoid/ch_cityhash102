@@ -77,6 +77,7 @@ impl U128 {
 }
 
 impl From<u128> for U128 {
+    #[inline]
     fn from(source: u128) -> Self {
         Self {
             first: source as u64,
@@ -86,6 +87,7 @@ impl From<u128> for U128 {
 }
 
 impl From<U128> for u128 {
+    #[inline]
     fn from(val: U128) -> Self {
         (val.first as u128) | ((val.second as u128) << 64)
     }
