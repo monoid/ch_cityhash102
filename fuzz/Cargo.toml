@@ -1,0 +1,29 @@
+[package]
+name = "ch_cityhash102-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+clickhouse-driver-cth = "0.1.0"
+
+[dependencies.ch_cityhash102]
+path = ".."
+
+[[bin]]
+name = "fuzz_cityhash64"
+path = "fuzz_targets/fuzz_cityhash64.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_cityhash128"
+path = "fuzz_targets/fuzz_cityhash128.rs"
+test = false
+doc = false
+bench = false
