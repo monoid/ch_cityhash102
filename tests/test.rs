@@ -3,7 +3,6 @@
  */
 
 use ch_cityhash102::{cityhash128, cityhash64};
-#[cfg(feature = "test_with_clickhouse_driver")]
 use clickhouse_driver_cth;
 use fake::Fake;
 
@@ -51,13 +50,11 @@ fn test_128_unaligned() {
 
 /* Test against clickhouse_driver cityhash bindings. */
 
-#[cfg(feature = "test_with_clickhouse_driver")]
 #[quickcheck_macros::quickcheck]
 fn qc_64_against_cxx(data: Vec<u8>) -> bool {
     cityhash64(data.as_ref()) == clickhouse_driver_cth::city_hash_64(data.as_ref())
 }
 
-#[cfg(feature = "test_with_clickhouse_driver")]
 #[quickcheck_macros::quickcheck]
 fn qc_128_against_cxx(data: Vec<u8>) -> bool {
     let our = cityhash128(data.as_ref());
